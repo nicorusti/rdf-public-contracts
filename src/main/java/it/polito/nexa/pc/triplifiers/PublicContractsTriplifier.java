@@ -48,7 +48,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             Map<String, String> controlID = new HashMap<>();
 
             for (JsonNode record : data) {
-                results.addAll(createStatements(record, year, authorityLabel, controlID, urlFile));
+                results.addAll(createStatements(record, year, controlID, urlFile));
             }
 
         } catch (Exception e){
@@ -64,18 +64,17 @@ public class PublicContractsTriplifier implements JSONTriplifier {
      * Create general statements from JSON produced using XML files of Italian public contracts.
      * @param record The input JSON for creating CIG statements. The root node is "data": {},{}
      * @param year Used for identifying the payment date of CIGs
-     * @param authorityLabel Label of the contracting authority
      * @param controlID For verifying if contracting authority resource is already created
      * @return A list of Jena Statements
      *
      */
-    private List createStatements(JsonNode record, String year, String authorityLabel, Map controlID, String urlFile){ //XXX Update above comments
+    private List createStatements(JsonNode record, String year, Map controlID, String urlFile){ //XXX Update above comments
         List<Statement> results = new ArrayList<>();
 
         String cig = "";
         String cigURI = "";
 
-        if(getValue("cig", record) != null)
+        if(getValue("cig", record) != "")
             cig = getValue("cig", record); //XXX Use a hash if the value is undefined
         else cig = "Missing cig";
 
@@ -85,7 +84,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
         Resource subject = ResourceFactory.createResource(BASE_URI + "public_contracts/" + cigURI);
 
-        if(getValue("strutturaProponente", record) != null) {
+        if(getValue("strutturaProponente", record) != "") {
 
             JsonNode contractingAutorities = record.get("strutturaProponente");
 
@@ -95,6 +94,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
                 JsonNode value = contractingAutorities.get(i);
                 String id = getValue("codiceFiscaleProp", value);
+                System.out.println(id);
 
                 if(controlID.get(id) == null) {
                     controlID.put(id, "found");
@@ -175,7 +175,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
         results.add(price);
 
-        if(getValue("sceltaContraente", record) != null ) {
+        if(getValue("sceltaContraente", record) != "" ) {
             String procedureType = getValue("sceltaContraente", record);
             Property ptProperty = ResourceFactory.createProperty("http://purl.org/procurement/public-contracts#", "procedureType");
             Resource pt = ResourceFactory.createResource(BASE_URI + "procedureTypes/" + cleanString(procedureType));
@@ -196,7 +196,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             results.add(pteLabel);
         }
 
-        if(getValue("importoSommeLiquidate", record) != null) {
+        if(getValue("importoSommeLiquidate", record) != "") {
             Resource paymentType = ResourceFactory.createResource("http://reference.data.gov.uk/def/payment#Payment");
             Resource payment = ResourceFactory.createResource(BASE_URI + "payments/" + cleanString(cig) + "_" + year);
 
@@ -246,7 +246,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             results.add(pt);
         }
 
-        if(getValue("tempiCompletamento", record) != null){
+        if(getValue("tempiCompletamento", record) != ""){
             JsonNode times = record.get("tempiCompletamento");
             RDFDatatype dateType = XSDDateType.XSDdate;
 
@@ -270,16 +270,16 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             }
         }
 
-        if(getValue("partecipanti",record) != null) {
-            JsonNode participants = record.get("partecipanti");
-            if (participants != null) // XXX
-                results.addAll(createGeneralParticipants(participants, subject, cig));
-        }
-
         if(getValue("aggiudicatari",record) != null) {
             JsonNode winners = record.get("aggiudicatari");
             if (winners != null) // XXX
                 results.addAll(createGeneralWinners(winners, subject, cig));
+        }
+
+        if(getValue("partecipanti",record) != null) {
+            JsonNode participants = record.get("partecipanti");
+            if (participants != null) // XXX
+                results.addAll(createGeneralParticipants(participants, subject, cig));
         }
 
         return results;
@@ -302,7 +302,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             if(getValue("type", value).equals("partecipante")) {
                 results.addAll(createParticipantStatements(record, value, publicContract, cig, false));
             } else {
-                String groupID = getValue("groupHash", record);
+                String groupID = getValue("groupHash", value);
                 results.addAll(createGroupStatements(value.get("raggruppamento"), publicContract, groupID, cig, false));
             }
             i++;
@@ -328,7 +328,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             if(getValue("type", value).equals("aggiudicatario")) {
                 results.addAll(createParticipantStatements(record, value, publicContract, cig, true));
             } else {
-                String groupID = getValue("groupHash", record);
+                String groupID = getValue("groupHash", value);
                 results.addAll(createGroupStatements(value.get("aggiudicatarioRaggruppamento"), publicContract, groupID, cig, true));
             }
             i++;
@@ -354,14 +354,14 @@ public class PublicContractsTriplifier implements JSONTriplifier {
         Boolean isItalian = false;
         Boolean hasNationality = true;
 
-        if(getValue("companyHash", value) != "") { // XXX Understand why is not null
+        if(getValue("companyHash", value) != "") {
             idParticipant = getValue("companyHash", value);
-            if(getValue("codiceFiscale", value) == null && getValue("identificativoFiscaleEstero", value) == null) {
+            if(getValue("codiceFiscale", value) == "" && getValue("identificativoFiscaleEstero", value) == "") {
 
                 hasNationality = false;
                 isItalian = false;
             }
-        } else if(getValue("codiceFiscale", value) != "") { // XXX Understand why is not null
+        } else if(getValue("codiceFiscale", value) != "") {
             idParticipant = getValue("codiceFiscale", value);
             isItalian = true;
         } else {
@@ -384,8 +384,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
                     ResourceFactory.createResource(BASE_URI + "tenders/" +
                             cleanString(cig + "_" + idParticipant)),
                     RDFS.label,
-                    ResourceFactory.createLangLiteral("Offerta aggiudicata da " + getValue("ragioneSociale", value) +
-                            " nel contratto " + getValue("oggetto", record), "it"));
+                    ResourceFactory.createLangLiteral("CIG: " + cig + " - Aggiudicatario:" + getValue("ragioneSociale", value), "it"));
 
             results.add(tenderWinner);
 
@@ -468,14 +467,14 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             results.add(nationality);
         }
 
-        if (getValue("codiceFiscale", value) != null) {
+        if (getValue("codiceFiscale", value) != "") {
             Statement vatID = ResourceFactory.createStatement(
                     ResourceFactory.createResource(BASE_URI + "businessEntities/" +
                             cleanString(idParticipant)),
                     ResourceFactory.createProperty("http://purl.org/goodrelations/v1#", "vatID"),
                     ResourceFactory.createPlainLiteral(getValue("codiceFiscale", value)));
             results.add(vatID);
-        } else if (getValue("identificativoFiscaleEstero", value) != null) {
+        } else if (getValue("identificativoFiscaleEstero", value) != "") {
             Statement vatID = ResourceFactory.createStatement(
                     ResourceFactory.createResource(BASE_URI + "businessEntities/" +
                             cleanString(idParticipant)),
@@ -541,6 +540,8 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
         int i = 0;
 
+        System.out.println(groupID);
+
         Resource gr =   ResourceFactory.createResource(BASE_URI + "groups/" + groupID);
 
         Resource td = ResourceFactory.createResource(BASE_URI + "tenders/" + cleanString(cig) + "_group_" + groupID);
@@ -566,11 +567,6 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
         results.add(isTender);
 
-        Statement tenderLabel = ResourceFactory.createStatement(
-                td,
-                RDFS.label,
-                ResourceFactory.createLangLiteral("Offerta proposta dal raggruppamento " + groupID, "it"));
-
         if(isWinner) {
             Statement tenderWinner = ResourceFactory.createStatement(
                     td,
@@ -586,6 +582,11 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
             results.add(awardedTender);
         }
+
+        Statement tenderLabel = ResourceFactory.createStatement(
+                td,
+                RDFS.label,
+                ResourceFactory.createLangLiteral("Offerta proposta dal raggruppamento " + groupID, "it"));
 
         results.add(tenderLabel);
 
@@ -610,13 +611,13 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             String idParticipant = "";
             Boolean isItalian = false;
             Boolean hasNationality = true;
-            if(getValue("companyHash", value) != null) {
+            if(getValue("companyHash", value) != "") {
                 idParticipant = getValue("companyHash", value);
-                if(getValue("codiceFiscale", value) == null && getValue("identificativoFiscaleEstero", value) == null) {
+                if(getValue("codiceFiscale", value) == "" && getValue("identificativoFiscaleEstero", value) == "") {
                     hasNationality = false;
                     isItalian = false;
                 }
-            } else if(getValue("codiceFiscale", value) != null) {
+            } else if(getValue("codiceFiscale", value) != "") {
                 idParticipant = getValue("codiceFiscale", value);
                 isItalian = true;
             } else {
@@ -628,7 +629,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
             Property rl;
             Statement role;
-            if(getValue("ruolo", value) != "") { //XXX
+            if(getValue("ruolo", value) != "") {
                 rl = ResourceFactory.createProperty(BASE_URI + "propertiesRole/" + getValue("ruolo", value));
                 role = ResourceFactory.createStatement(gr, rl, pt);
                 Statement isRoleSubproperty = ResourceFactory.createStatement(
@@ -644,9 +645,9 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
             results.add(role);
 
-            if(getValue("ruoloOriginal", record) != null) { // This property tracks errors in the role values
+            if(getValue("ruoloOriginal", record) != "") { // This property tracks errors in the role values
                 String error = "Soggetto privo di ragione sociale ha il ruolo " + getValue("ruoloOriginal", record) + " non conforme";
-                if(getValue("ragioneSociale", record) != null) {
+                if(getValue("ragioneSociale", record) != "") {
                     error = "Il soggetto " + getValue("ragioneSociale", record) + " ha il ruolo " + getValue("ruoloOriginal", record) + " non conforme";
                 }
                 Property rleProp = ResourceFactory.createProperty(BASE_URI + "properties/roleError");
@@ -690,8 +691,8 @@ public class PublicContractsTriplifier implements JSONTriplifier {
         procedures.add(new String[] {"25-AFFIDAMENTO DIRETTO A SOCIETA' RAGGRUPPATE/CONSORZIATE O CONTROLLATE NELLE CONCESSIONI DI LL.PP", "http://purl.org/procurement/public-contracts-procedure-types#AwardWithoutPriorPublication"});
         procedures.add(new String[] {"26-AFFIDAMENTO DIRETTO IN ADESIONE AD ACCORDO QUADRO/CONVENZIONE", "http://purl.org/procurement/public-contracts-procedure-types#AwardWithoutPriorPublication"});
         procedures.add(new String[] {"17-AFFIDAMENTO DIRETTO EX ART. 5 DELLA LEGGE N.381/91", "http://purl.org/procurement/public-contracts-procedure-types#AwardWithoutPriorPublication"});
-        procedures.add(new String[] {"14-PROCEDURA SELETTIVA EX ART 238 C.7, D.LGS. 163/2006", ""});
-        procedures.add(new String[] {"28-PROCEDURA AI SENSI DEI REGOLAMENTI DEGLI ORGANI COSTITUZIONALI", ""});
+        procedures.add(new String[] {"14-PROCEDURA SELETTIVA EX ART 238 C.7, D.LGS. 163/2006", BASE_URI + "public-contracts-procedure-types#Special"});
+        procedures.add(new String[] {"28-PROCEDURA AI SENSI DEI REGOLAMENTI DEGLI ORGANI COSTITUZIONALI", BASE_URI + "public-contracts-procedure-types#Special"});
 
         for(String[] procedure: procedures) {
 
