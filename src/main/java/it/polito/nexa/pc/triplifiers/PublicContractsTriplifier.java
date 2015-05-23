@@ -42,7 +42,6 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             JsonNode data = rootNode.get("data").get("lotto");
 
             String year = getValue("annoRiferimento", rootNode.get("metadata"));
-            String authorityLabel = getValue("entePubblicatore", rootNode.get("metadata"));
             String urlFile = getValue("urlFile", rootNode.get("metadata"));
 
             Map<String, String> controlID = new HashMap<>();
@@ -84,7 +83,8 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
         Resource subject = ResourceFactory.createResource(BASE_URI + "public_contracts/" + cigURI);
 
-        if(getValue("strutturaProponente", record) != "") {
+
+        if(getValue("strutturaProponente", record) != null) {
 
             JsonNode contractingAutorities = record.get("strutturaProponente");
 
@@ -94,7 +94,6 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
                 JsonNode value = contractingAutorities.get(i);
                 String id = getValue("codiceFiscaleProp", value);
-                System.out.println(id);
 
                 if(controlID.get(id) == null) {
                     controlID.put(id, "found");
@@ -373,7 +372,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
                 ResourceFactory.createResource(BASE_URI + "tenders/" +
                         cleanString(cig + "_" + idParticipant)),
                 RDFS.label,
-                ResourceFactory.createLangLiteral("CIG: " + cig + " - Offerente:" + getValue("ragioneSociale", value), "it")); // XXX Use getValue(oggetto) reference
+                ResourceFactory.createLangLiteral("CIG: " + cig + " - Offerente: " + getValue("ragioneSociale", value), "it")); // XXX Use getValue(oggetto) reference
 
         results.add(tender);
 
@@ -540,16 +539,26 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
         int i = 0;
 
-        System.out.println(groupID);
-
         Resource gr =   ResourceFactory.createResource(BASE_URI + "groups/" + groupID);
 
         Resource td = ResourceFactory.createResource(BASE_URI + "tenders/" + cleanString(cig) + "_group_" + groupID);
 
+        // Get head of the group to clarify the label of the group
+        String groupHead = "indefinito";
+        while (record.get(i) != null) {
+            JsonNode value = record.get(i);
+            if(getValue("ruolo", value).equals("02-MANDATARIA")) {
+                groupHead = getValue("ragioneSociale", value);
+            } else if(getValue("ruolo", value).equals("04-CAPOGRUPPO")) {
+                groupHead = getValue("ragioneSociale", value);
+            }
+            i++;
+        }
+
         Statement  group = ResourceFactory.createStatement(
                 gr,
                 RDFS.label,
-                ResourceFactory.createLangLiteral("Raggruppamento " + groupID + " per contratto " + cig, "it"));
+                ResourceFactory.createLangLiteral("Raggruppamento con capogruppo/mandataria " + groupHead, "it"));
 
         results.add(group);
 
@@ -571,7 +580,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             Statement tenderWinner = ResourceFactory.createStatement(
                     td,
                     RDFS.label,
-                    ResourceFactory.createLangLiteral("Offerta aggiudicata dal raggruppamento " + groupID, "it"));
+                    ResourceFactory.createLangLiteral("Raggruppamento aggiudicatario: capogruppo/mandataria " + groupHead, "it"));
 
             results.add(tenderWinner);
 
@@ -586,7 +595,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
         Statement tenderLabel = ResourceFactory.createStatement(
                 td,
                 RDFS.label,
-                ResourceFactory.createLangLiteral("Offerta proposta dal raggruppamento " + groupID, "it"));
+                ResourceFactory.createLangLiteral("Raggruppamento partecipante: capogruppo/mandataria " + groupHead, "it"));
 
         results.add(tenderLabel);
 
