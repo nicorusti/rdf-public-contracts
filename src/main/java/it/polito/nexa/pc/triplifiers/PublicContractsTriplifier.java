@@ -357,7 +357,6 @@ public class PublicContractsTriplifier implements JSONTriplifier {
         if(getValue("companyHash", value) != "") {
             idParticipant = getValue("companyHash", value);
             if(getValue("codiceFiscale", value) == "" && getValue("identificativoFiscaleEstero", value) == "") {
-
                 hasNationality = false;
                 isItalian = false;
             }
@@ -366,7 +365,6 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             isItalian = true;
         } else {
             idParticipant = getValue("identificativoFiscaleEstero", value);
-
         }
 
         results.addAll(createSingleParticipant(value, hasNationality, isItalian, idParticipant));
@@ -442,13 +440,15 @@ public class PublicContractsTriplifier implements JSONTriplifier {
     private List<Statement> createSingleParticipant(JsonNode value, Boolean hasNationality, Boolean isItalian, String idParticipant){
         List<Statement> results = new ArrayList<>();
 
-        Statement participant = ResourceFactory.createStatement(
-                ResourceFactory.createResource(BASE_URI + "businessEntities/" +
-                        cleanString(idParticipant)),
-                ResourceFactory.createProperty("http://www.w3.org/2000/01/rdf-schema#", "label"),
-                ResourceFactory.createLangLiteral(getValue("ragioneSociale", value),"it"));
+        if (getValue("ragioneSociale", value) != ""){
+            Statement participant = ResourceFactory.createStatement(
+                    ResourceFactory.createResource(BASE_URI + "businessEntities/" +
+                            cleanString(idParticipant)),
+                    ResourceFactory.createProperty("http://www.w3.org/2000/01/rdf-schema#", "label"),
+                    ResourceFactory.createLangLiteral(getValue("ragioneSociale", value),"it"));
 
-        results.add(participant);
+            results.add(participant);
+        }
 
         if(isItalian) {
             Statement nationality = ResourceFactory.createStatement(
