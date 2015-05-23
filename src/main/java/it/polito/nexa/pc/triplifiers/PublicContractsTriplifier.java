@@ -492,14 +492,6 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             results.add(notValidLabel);
         }
 
-        Statement legalName = ResourceFactory.createStatement(
-                ResourceFactory.createResource(BASE_URI + "businessEntities/" +
-                        cleanString(idParticipant)),
-                ResourceFactory.createProperty("http://purl.org/goodrelations/v1#", "legalName"),
-                ResourceFactory.createLangLiteral(getValue("ragioneSociale", value),"it"));
-
-        results.add(legalName);
-
         Statement grBusinessEntity = ResourceFactory.createStatement(
                 ResourceFactory.createResource(BASE_URI + "businessEntities/" +
                         cleanString(idParticipant)),
