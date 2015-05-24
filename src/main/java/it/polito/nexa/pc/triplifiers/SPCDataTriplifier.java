@@ -10,7 +10,6 @@ import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.rdf.model.ResourceFactory;
 import com.hp.hpl.jena.rdf.model.Statement;
 import com.hp.hpl.jena.vocabulary.OWL;
-import it.polito.nexa.pc.triplifiers.JSONTriplifier;
 
 import java.io.IOException;
 import java.util.ArrayList;
