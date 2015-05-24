@@ -457,13 +457,13 @@ public class PublicContractsTriplifier implements JSONTriplifier {
                     ResourceFactory.createResource("http://dbpedia.org/page/Italy"));
             results.add(nationality);
         }
-        else if (!isItalian && hasNationality){
-            Statement nationality = ResourceFactory.createStatement(
+        else if (!isItalian && hasNationality){ // It creates problems for wrong data
+            /*Statement nationality = ResourceFactory.createStatement(
                     ResourceFactory.createResource(BASE_URI + "businessEntities/" +
                             cleanString(idParticipant)),
                     ResourceFactory.createProperty(BASE_URI + "properties/isItalian"),
                     ResourceFactory.createLangLiteral("false", "en"));
-            results.add(nationality);
+            results.add(nationality);*/
         }
 
         if (getValue("codiceFiscale", value) != "") {
@@ -537,14 +537,13 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
         List<Statement> results = new ArrayList<>();
 
-        int i = 0;
-
         Resource gr =   ResourceFactory.createResource(BASE_URI + "groups/" + groupID);
 
         Resource td = ResourceFactory.createResource(BASE_URI + "tenders/" + cleanString(cig) + "_group_" + groupID);
 
         // Get head of the group to clarify the label of the group
         String groupHead = "indefinito";
+        int i = 0;
         while (record.get(i) != null) {
             JsonNode value = record.get(i);
             if(getValue("ruolo", value).equals("02-MANDATARIA")) {
@@ -613,9 +612,12 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
         results.add(foafGroup);
 
-        while (record.get(i) != null) {
+        int a = 0;
+        while (record.get(a) != null) {
 
-            JsonNode value = record.get(i);
+            System.out.println("Create linking between groups and entity");
+
+            JsonNode value = record.get(a);
 
             String idParticipant = "";
             Boolean isItalian = false;
@@ -665,7 +667,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             }
 
             results.addAll(createSingleParticipant(value, hasNationality, isItalian, idParticipant));
-            i++;
+            a++;
         }
 
         return results;
