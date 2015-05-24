@@ -10,6 +10,9 @@ import it.polito.nexa.pc.importers.DefaultJSONImporter;
 import it.polito.nexa.pc.triplifiers.PropStructLabelsTriplifier;
 import it.polito.nexa.pc.triplifiers.PublicContractsTriplifier;
 import it.polito.nexa.pc.triplifiers.SPCDataTriplifier;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.DirectoryFileFilter;
+import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 
@@ -17,6 +20,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 /**
@@ -28,11 +33,56 @@ public class TriplesGenerator {
 
         DefaultJSONImporter dji = new DefaultJSONImporter();
 
-        // Generate labels of proposing structures;
+        // Generate labels of proposing structures
         String psJson = dji.getJSON("src/main/resources/proposingStructures.json", "FILE");
         PropStructLabelsTriplifier pslt = new PropStructLabelsTriplifier();
         RDFforProposingStructureLabels(pslt, psJson, createBaseModel());
 
+        // Generate sameas with SPCData
+        SPCDataTriplifier st = new SPCDataTriplifier();
+        RDFforSameas(st, psJson, createBaseModel());
+
+        // Generate public contracts data
+        PublicContractsTriplifier pcTriplifier = new PublicContractsTriplifier();
+        File dir = new File("../download");
+        Collection files = FileUtils.listFiles(dir, new RegexFileFilter("([^\\s]+(\\.(?i)(json))$)"), DirectoryFileFilter.DIRECTORY);
+        System.out.println(files.size());
+        Iterator itr = files.iterator();
+
+        long startTime = System.currentTimeMillis();
+        long endTime = 0;
+
+        int processedFiles = 0;
+
+        Model pcModel = createBaseModel();
+
+        while (itr.hasNext()) {
+            String value = itr.next().toString();
+            Path path = Paths.get(value);
+            String fileName = path.getFileName().toString();
+            if(!fileName.equals("stats.json") && !fileName.equals("proposingStructure.json") && !fileName.equals("downloadStats.json") && !fileName.contains("_index")){
+                String pcJson = dji.getJSON(value, "FILE");
+                List<Statement> pcStatements = pcTriplifier.triplifyJSON(pcJson);
+                pcModel.add(pcStatements);
+                processedFiles += 1;
+                if (processedFiles %100 == 0) {
+                    System.out.println("Processed " + processedFiles +" files");
+                }
+                if (processedFiles %20000 == 0) {
+                    System.out.println("Publish RDF!");
+                    publishRDF("output/rdf_" + processedFiles + ".nt", pcModel);
+                    pcModel = ModelFactory.createDefaultModel();
+                }
+            }
+        }
+        publishRDF("output/rdf.nt", pcModel);
+        endTime = System.currentTimeMillis();
+        System.out.println("Time in minutes: "+ ((endTime-startTime)/1000)/60);
+
+        /* Generate test data*/
+        String testJson = dji.getJSON("src/main/resources/polito2014.json", "FILE");
+        PublicContractsTriplifier pctest = new PublicContractsTriplifier();
+        RDFforTestingData(pctest, testJson, createBaseModel());
     }
 
     private static Model createBaseModel(){
@@ -60,8 +110,22 @@ public class TriplesGenerator {
     }
 
     private static void RDFforProposingStructureLabels(PropStructLabelsTriplifier pslt, String inputJson, Model model) throws FileNotFoundException {
+        System.out.println("Generate labels data...");
         List<Statement> statements = pslt.triplifyJSON(inputJson);
         model.add(statements);
-        publishRDF("output/proposing-strctures-label.nt", model);
+        publishRDF("output/proposing-strctures-labels.nt", model);
+    }
+
+    private static void RDFforTestingData(PublicContractsTriplifier pct, String inputJson, Model model) throws FileNotFoundException {
+        List<Statement> statements = pct.triplifyJSON(inputJson);
+        model.add(statements);
+        publishRDF("output/test.nt", model);
+    }
+
+    private static void RDFforSameas(SPCDataTriplifier st, String inputJson, Model model) throws FileNotFoundException {
+        System.out.println("Generate sameas data...");
+        List<Statement> statements = st.triplifyJSON(inputJson);
+        model.add(statements);
+        publishRDF("output/sameas.nt", model);
     }
 }
