@@ -466,28 +466,29 @@ public class PublicContractsTriplifier implements JSONTriplifier {
             results.add(nationality);*/
         }
 
-        if (getValue("codiceFiscale", value) != "") {
-            Statement vatID = ResourceFactory.createStatement(
-                    ResourceFactory.createResource(BASE_URI + "businessEntities/" +
-                            cleanString(idParticipant)),
-                    ResourceFactory.createProperty("http://purl.org/goodrelations/v1#", "vatID"),
-                    ResourceFactory.createPlainLiteral(getValue("codiceFiscale", value)));
-            results.add(vatID);
-        } else if (getValue("identificativoFiscaleEstero", value) != "") {
-            Statement vatID = ResourceFactory.createStatement(
-                    ResourceFactory.createResource(BASE_URI + "businessEntities/" +
-                            cleanString(idParticipant)),
-                    ResourceFactory.createProperty("http://purl.org/goodrelations/v1#", "vatID"),
-                    ResourceFactory.createPlainLiteral(getValue("identificativoFiscaleEstero", value)));
-            results.add(vatID);
-        }
-
         if(getValue("companyHash", value) != "") {
             Statement notValidLabel = ResourceFactory.createStatement(ResourceFactory.createResource(BASE_URI + "businessEntities/" +
                     cleanString(idParticipant)),
                     RDFS.label,
-                    ResourceFactory.createLangLiteral("Codice fiscale assente o non valido","it"));
+                    ResourceFactory.createLangLiteral("Codice fiscale assente o non valido", "it"));
             results.add(notValidLabel);
+        } 
+        else {
+            if (getValue("codiceFiscale", value) != "") {
+                Statement vatID = ResourceFactory.createStatement(
+                        ResourceFactory.createResource(BASE_URI + "businessEntities/" +
+                                cleanString(idParticipant)),
+                        ResourceFactory.createProperty("http://purl.org/goodrelations/v1#", "vatID"),
+                        ResourceFactory.createPlainLiteral(getValue("codiceFiscale", value)));
+                results.add(vatID);
+            } else if (getValue("identificativoFiscaleEstero", value) != "") {
+                Statement vatID = ResourceFactory.createStatement(
+                        ResourceFactory.createResource(BASE_URI + "businessEntities/" +
+                                cleanString(idParticipant)),
+                        ResourceFactory.createProperty("http://purl.org/goodrelations/v1#", "vatID"),
+                        ResourceFactory.createPlainLiteral(getValue("identificativoFiscaleEstero", value)));
+                results.add(vatID);
+            }
         }
 
         Statement grBusinessEntity = ResourceFactory.createStatement(
