@@ -79,10 +79,10 @@ public class TriplesGenerator {
         endTime = System.currentTimeMillis();
         System.out.println("Time in minutes: "+ ((endTime-startTime)/1000)/60);
 
-        /* Generate test data*/
-        String testJson = dji.getJSON("src/main/resources/polito2014.json", "FILE");
+        /* Generate test data
+        String testJson = dji.getJSON("src/main/resources/bad-vatID.json", "FILE");
         PublicContractsTriplifier pctest = new PublicContractsTriplifier();
-        RDFforTestingData(pctest, testJson, createBaseModel());
+        RDFforTestingData(pctest, testJson, createBaseModel());*/
     }
 
     private static Model createBaseModel(){

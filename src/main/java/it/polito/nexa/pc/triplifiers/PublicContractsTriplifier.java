@@ -197,8 +197,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
         if(getValue("importoSommeLiquidate", record) != "") {
             Resource paymentType = ResourceFactory.createResource("http://reference.data.gov.uk/def/payment#Payment");
-            Resource payment = ResourceFactory.createResource(BASE_URI + "payments/" + cleanString(cig) + "_" + year);
-
+            Resource payment = ResourceFactory.createResource(BASE_URI + "payments/" + cleanString(cigURI) + "_" + year);
             Statement hasPayment = ResourceFactory.createStatement(
                     subject,
                     ResourceFactory.createProperty("http://reference.data.gov.uk/def/payment#payment"),
@@ -272,13 +271,13 @@ public class PublicContractsTriplifier implements JSONTriplifier {
         if(getValue("aggiudicatari",record) != null) {
             JsonNode winners = record.get("aggiudicatari");
             if (winners != null) // XXX
-                results.addAll(createGeneralWinners(winners, subject, cig));
+                results.addAll(createGeneralWinners(winners, subject, cig, cigURI));
         }
 
         if(getValue("partecipanti",record) != null) {
             JsonNode participants = record.get("partecipanti");
             if (participants != null) // XXX
-                results.addAll(createGeneralParticipants(participants, subject, cig));
+                results.addAll(createGeneralParticipants(participants, subject, cig, cigURI));
         }
 
         return results;
@@ -292,17 +291,17 @@ public class PublicContractsTriplifier implements JSONTriplifier {
      * @return A list of Jena Statements
      *
      */
-    private List createGeneralParticipants(JsonNode record, Resource publicContract, String cig) {
+    private List createGeneralParticipants(JsonNode record, Resource publicContract, String cig, String cigURI) {
         List<Statement> results = new ArrayList<>();
 
         int i = 0;
         while(record.get(i) != null){
             JsonNode value = record.get(i);
             if(getValue("type", value).equals("partecipante")) {
-                results.addAll(createParticipantStatements(record, value, publicContract, cig, false));
+                results.addAll(createParticipantStatements(record, value, publicContract, cig, cigURI, false));
             } else {
                 String groupID = getValue("groupHash", value);
-                results.addAll(createGroupStatements(value.get("raggruppamento"), publicContract, groupID, cig, false));
+                results.addAll(createGroupStatements(value.get("raggruppamento"), publicContract, groupID, cig, cigURI, false));
             }
             i++;
         }
@@ -317,7 +316,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
      * @return A list of Jena Statements
      *
      */
-    private List createGeneralWinners(JsonNode record, Resource publicContract, String cig) {
+    private List createGeneralWinners(JsonNode record, Resource publicContract, String cig, String cigURI) {
         List<Statement> results = new ArrayList<>();
 
         int i = 0;
@@ -325,10 +324,10 @@ public class PublicContractsTriplifier implements JSONTriplifier {
         while(record.get(i) != null){
             JsonNode value = record.get(i);
             if(getValue("type", value).equals("aggiudicatario")) {
-                results.addAll(createParticipantStatements(record, value, publicContract, cig, true));
+                results.addAll(createParticipantStatements(record, value, publicContract, cig, cigURI, true));
             } else {
                 String groupID = getValue("groupHash", value);
-                results.addAll(createGroupStatements(value.get("aggiudicatarioRaggruppamento"), publicContract, groupID, cig, true));
+                results.addAll(createGroupStatements(value.get("aggiudicatarioRaggruppamento"), publicContract, groupID, cig, cigURI, true));
             }
             i++;
         }
@@ -342,11 +341,12 @@ public class PublicContractsTriplifier implements JSONTriplifier {
      * @param publicContract The resource that identifies the public contract. A sample URI is:
      *                       http:​/​/​localhost/​id/​public_​contracts/​5128833EDE
      * @param cig The CIG identifier
+     * @param cigURI TODO
      * @param isWinner Flag for identifying winner tenders
      * @return A list of Jena Statements
      *
      */
-    private List createParticipantStatements(JsonNode record,JsonNode value, Resource publicContract, String cig, Boolean isWinner) {
+    private List createParticipantStatements(JsonNode record,JsonNode value, Resource publicContract, String cig, String cigURI, Boolean isWinner) {
         List<Statement> results = new ArrayList<>();
 
         String idParticipant = "";
@@ -370,7 +370,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
         Statement tender = ResourceFactory.createStatement(
                 ResourceFactory.createResource(BASE_URI + "tenders/" +
-                        cleanString(cig + "_" + idParticipant)),
+                        cleanString(cigURI + "_" + idParticipant)),
                 RDFS.label,
                 ResourceFactory.createLangLiteral("CIG: " + cig + " - Offerente: " + getValue("ragioneSociale", value), "it")); // XXX Use getValue(oggetto) reference
 
@@ -379,7 +379,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
         if(isWinner) {
             Statement tenderWinner = ResourceFactory.createStatement(
                     ResourceFactory.createResource(BASE_URI + "tenders/" +
-                            cleanString(cig + "_" + idParticipant)),
+                            cleanString(cigURI + "_" + idParticipant)),
                     RDFS.label,
                     ResourceFactory.createLangLiteral("CIG: " + cig + " - Aggiudicatario:" + getValue("ragioneSociale", value), "it"));
 
@@ -389,14 +389,14 @@ public class PublicContractsTriplifier implements JSONTriplifier {
                     publicContract,
                     ResourceFactory.createProperty("http://purl.org/procurement/public-contracts#", "awardedTender"),
                     ResourceFactory.createResource(BASE_URI + "tenders/" +
-                            cleanString(cig + "_" + idParticipant)));
+                            cleanString(cigURI + "_" + idParticipant)));
 
             results.add(awardedTender);
         }
 
         Statement tenderClass = ResourceFactory.createStatement(
                 ResourceFactory.createResource(BASE_URI + "tenders/" +
-                        cleanString(cig + "_" + idParticipant)),
+                        cleanString(cigURI + "_" + idParticipant)),
                 RDF.type,
                 ResourceFactory.createResource("http://purl.org/procurement/public-contracts#Tender"));
 
@@ -406,13 +406,13 @@ public class PublicContractsTriplifier implements JSONTriplifier {
                 publicContract,
                 ResourceFactory.createProperty("http://purl.org/procurement/public-contracts#", "tender"),
                 ResourceFactory.createResource(BASE_URI + "tenders/" +
-                        cleanString(cig + "_" + idParticipant)));
+                        cleanString(cigURI + "_" + idParticipant)));
 
         results.add(hasTender);
 
         Statement bidder = ResourceFactory.createStatement(
                 ResourceFactory.createResource(BASE_URI + "tenders/" +
-                        cleanString(cig + "_" + idParticipant)),
+                        cleanString(cigURI + "_" + idParticipant)),
                 ResourceFactory.createProperty("http://purl.org/procurement/public-contracts#", "bidder"),
                 ResourceFactory.createResource(BASE_URI + "businessEntities/" +
                         cleanString(idParticipant)));
@@ -454,7 +454,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
                     ResourceFactory.createResource(BASE_URI + "businessEntities/" +
                             cleanString(idParticipant)),
                     ResourceFactory.createProperty("http://dbpedia.org/ontology/country"),
-                    ResourceFactory.createResource("http://dbpedia.org/page/Italy"));
+                    ResourceFactory.createResource("http://dbpedia.org/resource/Italy"));
             results.add(nationality);
         }
         else if (!isItalian && hasNationality){ // It creates problems for wrong data
@@ -526,6 +526,7 @@ public class PublicContractsTriplifier implements JSONTriplifier {
      * @param groupID An incremental id for distinguishing groups of participant (this value is combine with the
      *                cig in order to create an identifier for the group)
      * @param cig The CIG identifier
+     * @param cigURI TODO
      * @param isWinner Flag for identifying the winner tender
      * @return A list of Jena Statements
      *
@@ -534,13 +535,14 @@ public class PublicContractsTriplifier implements JSONTriplifier {
                                                   Resource publicContract,
                                                   String groupID,
                                                   String cig,
+                                                  String cigURI,
                                                   Boolean isWinner){
 
         List<Statement> results = new ArrayList<>();
 
         Resource gr =   ResourceFactory.createResource(BASE_URI + "groups/" + groupID);
 
-        Resource td = ResourceFactory.createResource(BASE_URI + "tenders/" + cleanString(cig) + "_group_" + groupID);
+        Resource td = ResourceFactory.createResource(BASE_URI + "tenders/" + cleanString(cigURI) + "_group_" + groupID);
 
         // Get head of the group to clarify the label of the group
         String groupHead = "indefinito";
@@ -615,8 +617,6 @@ public class PublicContractsTriplifier implements JSONTriplifier {
 
         int a = 0;
         while (record.get(a) != null) {
-
-            System.out.println("Create linking between groups and entity");
 
             JsonNode value = record.get(a);
 
