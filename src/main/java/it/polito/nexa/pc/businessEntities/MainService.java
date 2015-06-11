@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 public class MainService {
 	private static HashMap<String, Company> companies = new HashMap<>(); 
 	private HashMap <String, Object> result = new HashMap<>(); 
-	private static String filesDirectory="C:/pythonexercises/download/"; 
+	private static String filesDirectory="download/"; 
 	
 	public static void main(String[] args) {
 		
